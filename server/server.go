@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -13,14 +12,14 @@ import (
 	noesctmpl "text/template"
 	"time"
 
-	"github.com/NYTimes/gziphandler"
 	"github.com/elazarl/go-bindata-assetfs"
+	"github.com/NYTimes/gziphandler"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	"github.com/yudai/gotty/pkg/homedir"
-	"github.com/yudai/gotty/pkg/randomstring"
-	"github.com/yudai/gotty/webtty"
+	"github.com/bigstack-oss/gotty/pkg/homedir"
+	"github.com/bigstack-oss/gotty/pkg/randomstring"
+	"github.com/bigstack-oss/gotty/webtty"
 )
 
 // Server provides a webtty HTTP endpoint.
@@ -217,30 +216,27 @@ func (server *Server) setupHTTPServer(handler http.Handler) (*http.Server, error
 		Handler: handler,
 	}
 
-	if server.options.EnableTLSClientAuth {
-		tlsConfig, err := server.tlsConfig()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to setup TLS configuration")
-		}
-		srv.TLSConfig = tlsConfig
+	tlsConfig, err := server.tlsConfig()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to setup TLS configuration")
 	}
+	srv.TLSConfig = tlsConfig
 
 	return srv, nil
 }
 
 func (server *Server) tlsConfig() (*tls.Config, error) {
-	caFile := homedir.Expand(server.options.TLSCACrtFile)
-	caCert, err := ioutil.ReadFile(caFile)
-	if err != nil {
-		return nil, errors.New("could not open CA crt file " + caFile)
-	}
-	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(caCert) {
-		return nil, errors.New("could not parse CA crt file data in " + caFile)
-	}
 	tlsConfig := &tls.Config{
-		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
+		MinVersion: tls.VersionTLS12,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		},
 	}
+
 	return tlsConfig, nil
 }
